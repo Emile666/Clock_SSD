@@ -11,7 +11,7 @@ extern uint32_t t2_millis;      // Updated in TMR2 interrupt
 
 char     rs232_inbuf[UART_BUFLEN]; // buffer for RS232 commands
 uint8_t  rs232_ptr     = 0;        // index in RS232 buffer
-char     ssd_clk_ver[] = "Clock SSD v0.3\n";
+char     ssd_clk_ver[] = "Clock SSD v0.31\n";
 uint8_t  ssd[10] = {0x7E,0x30,0x6D,0x79,0x33,0x5B,0x5F,0x70,0x7F,0x7B}; // 0abcdefg
 
 uint8_t led_r[NR_LEDS]; // Array with 8-bit red colour for all WS2812
@@ -23,6 +23,7 @@ uint8_t led_intensity;           // Intensity of WS2812 LEDs
 bool    dst_active          = false; // true = Daylight Saving Time active
 Time    dt;             // Struct with time and date values, updated every sec.
 bool    real_binary = false;
+bool    powerup     = true;
 
 uint8_t blank_begin_h  = 23;
 uint8_t blank_begin_m  = 30;
@@ -163,7 +164,7 @@ void test_pattern(void)
             case 0: 
                 for (i = 0; i < NR_LEDS; i++)
                 {
-                    led_b[i] = 0x10;
+                    led_b[i] = led_intensity;
                     led_g[i] = led_r[i] = 0x00;
                 } // for
                 cntr_b = 1; // next colour
@@ -171,16 +172,16 @@ void test_pattern(void)
             case 1: 
                 for (i = 0; i < NR_LEDS; i++)
                 {
+                    led_g[i] = led_intensity;
                     led_b[i] = led_r[i] = 0x00;
-                    led_g[i] = 0x10;
                 } // for
                 cntr_b = 2;
                 break;
             case 2: 
                 for (i = 0; i < NR_LEDS; i++)
                 {
+                    led_r[i] = led_intensity;
                     led_b[i] = led_g[i] = 0x00;
-                    led_r[i] = 0x10;
                 } // for
                 cntr_b = 0;
                 break;
@@ -224,7 +225,11 @@ void pattern_task(void)
     } // if
     else
     {
-        if (blanking_active()) return;
+        if (blanking_active() || powerup) 
+        {
+            clear_all_leds();
+            return;
+        } // if
         // check summertime change every minute
         if (dt.sec == 0) check_and_set_summertime(); 
     	x  = encode_to_bcd(dt.sec);
@@ -478,6 +483,7 @@ void check_and_set_summertime(void)
 void clock_task(void)
 {
     ds3231_gettime(&dt);
+    powerup = false;
 } // clock_task()
 
 /*-----------------------------------------------------------------------------
@@ -763,11 +769,11 @@ int main(void)
     blank_end_m   = (uint8_t)eeprom_read_config(EEP_ADDR_BEND_M);
     
     // Initialise all tasks for the scheduler
-    scheduler_init();                          // clear task_list struct
-    add_task(pattern_task, "PTRN"  , 0,  100); // every 100 msec.
-    add_task(ws2812_task , "WS2812",50,  100); // every 100 msec.
-    add_task(clock_task  , "CLK"   ,80, 1000); // every second
-    init_watchdog();                           // init. the IWDG watchdog
+    scheduler_init();                         // clear task_list struct
+    add_task(pattern_task, "PTRN"  , 0, 100); // every 100 msec.
+    add_task(ws2812_task , "WS2812",50, 100); // every 100 msec.
+    add_task(clock_task  , "CLK"   ,80, 500); // every second
+    init_watchdog();                          // init. the IWDG watchdog
     __enable_interrupt();
 
     while (1)
