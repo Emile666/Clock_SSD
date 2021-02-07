@@ -236,7 +236,16 @@ void pattern_task(void)
         xm = (x >> 4) & 0x0F; // msb seconds
         xl = x & 0x0F;        // lsb seconds
         // There's at least 1 board, send seconds
-        led_r[NR_LEDS- 1] = 0x00; // no decimal-point
+
+        if (dst_active == false)                 //Set Decimal point to Blue wintertime
+        {
+          led_b[NR_LEDS- 1] = ssd[xl] ? led_intensity : 0x00; // No decimal-point
+        }
+        else                                    //Set Decimal point to Red summertime
+        {
+          led_r[NR_LEDS- 1] = ssd[xl] ? led_intensity : 0x00;
+         } // if
+       
         led_r[NR_LEDS- 2] = led_r[NR_LEDS- 3] = 
         led_r[NR_LEDS- 4] = led_r[NR_LEDS- 5] = (ssd[xl] & SEG_F) ? led_intensity : 0x00;
         led_r[NR_LEDS- 6] = led_r[NR_LEDS- 7] = 
@@ -272,7 +281,7 @@ void pattern_task(void)
     	x  = encode_to_bcd(dt.min);
         xm = (x >> 4) & 0x0F; // msb minutes
         xl = x & 0x0F;        // lsb minutes
-        led_g[NR_LEDS-59] = 0x00; // no decimal-point
+        led_g[NR_LEDS-59] = ssd[xl] ? led_intensity : 0x00; // decimal-point MM
         led_g[NR_LEDS-60] = led_g[NR_LEDS-61] = 
         led_g[NR_LEDS-62] = led_g[NR_LEDS-63] = (ssd[xl] & SEG_F) ? led_intensity : 0x00;
         led_g[NR_LEDS-64] = led_g[NR_LEDS-65] = 
@@ -309,7 +318,7 @@ void pattern_task(void)
     	x  = encode_to_bcd(dt.hour);
         xm = (x >> 4) & 0x0F; // msb hours
         xl = x & 0x0F;        // lsb hours
-        led_b[NR_LEDS-117] = 0x00; // no decimal-point
+        led_b[NR_LEDS-117] = ssd[xl] ? led_intensity : 0x00; // Decimal-point HH
         led_b[NR_LEDS-118] = led_b[NR_LEDS-119] = 
         led_b[NR_LEDS-120] = led_b[NR_LEDS-121] = (ssd[xl] & SEG_F) ? led_intensity : 0x00;
         led_b[NR_LEDS-122] = led_b[NR_LEDS-123] = 
@@ -772,7 +781,7 @@ int main(void)
     scheduler_init();                         // clear task_list struct
     add_task(pattern_task, "PTRN"  , 0, 100); // every 100 msec.
     add_task(ws2812_task , "WS2812",50, 100); // every 100 msec.
-    add_task(clock_task  , "CLK"   ,80, 500); // every second
+    add_task(clock_task  , "CLK"   ,80, 485); // every second Why 485? seems to be the best value to have a smooth second change
     init_watchdog();                          // init. the IWDG watchdog
     __enable_interrupt();
 
